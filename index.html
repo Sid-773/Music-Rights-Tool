@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel File Upload</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Upload Your Excel File</h1>
+        </header>
+        <div id="drop-zone" class="upload-section">
+            <label for="file-upload" class="custom-file-upload">
+                Choose File
+            </label>
+            <input id="file-upload" type="file" accept=".xlsx, .xls">
+            <span id="file-name" class="file-name">or drag and drop it here</span>
+            <div class="controls">
+                <input type="text" id="show-name" placeholder="Title name">
+                <input type="number" id="start-row" placeholder="Start from row..." min="1">
+                <button id="submit-btn">Submit</button>
+            </div>
+            <div id="distribution-id-inputs" class="distribution-id-inputs"></div>
+        </div>
+        <section id="songs-section" class="songs-section" style="display: none;">
+            <h2>SONGS</h2>
+            <button id="export-all-btn" class="export-btn" style="display: none;">Export All as ZIP</button>
+            <div id="excel-data"></div>
+        </section>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
