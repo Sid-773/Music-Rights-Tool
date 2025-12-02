@@ -8,6 +8,7 @@ const showNameInput = document.getElementById('show-name');
 const distributionIdContainer = document.getElementById('distribution-id-inputs');
 const submitBtn = document.getElementById('submit-btn');
 const exportAllBtn = document.getElementById('export-all-btn');
+const loader = document.getElementById('loader');
 
 let workbookData = {};
 
@@ -84,6 +85,11 @@ function handleFile(file) {
         songsSection.style.display = 'none'; // Hide section until submit
         exportAllBtn.style.display = 'none';
         distributionIdContainer.innerHTML = ''; // Clear old inputs
+        
+        // Disable submit button and show loader
+        submitBtn.disabled = true;
+        loader.style.display = 'block';
+
         const reader = new FileReader();
         reader.onload = (e) => {
             const data = new Uint8Array(e.target.result);
@@ -100,6 +106,10 @@ function handleFile(file) {
                     createDistributionIdInput(episodeNumber);
                 }
             });
+
+            // Re-enable submit button and hide loader
+            submitBtn.disabled = false;
+            loader.style.display = 'none';
         };
         reader.readAsArrayBuffer(file);
     } else {
