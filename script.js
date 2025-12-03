@@ -100,7 +100,7 @@ function handleFile(file) {
 
                 workbook.SheetNames.forEach(sheetName => {
                     const isEpisodeSheet = episodeRegex.test(sheetName);
-                    const isFilmSheet = sheetName.toUpperCase() === "FILM";
+                    const isFilmSheet = sheetName.trim().toUpperCase() === "FILM";
 
                     if (isEpisodeSheet || isFilmSheet) {
                         console.log(`Found valid sheet: ${sheetName}`);
