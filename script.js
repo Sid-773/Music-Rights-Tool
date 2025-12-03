@@ -51,25 +51,20 @@ exportAllBtn.addEventListener('click', () => {
     }
 
     const zip = new JSZip();
-    const episodeRegex = /Episode #(\d+)/;
 
     Object.keys(workbookData).forEach(sheetName => {
-        const match = sheetName.match(episodeRegex);
-        if (match) {
-            const episodeNumber = match[1];
-            const sheetData = workbookData[sheetName];
-            const distIdInput = document.getElementById(`dist-id-${episodeNumber}`);
-            const distributionId = distIdInput ? distIdInput.value.trim() : '';
-            const processedData = processSheetData(sheetData, distributionId);
-            
-            const filename = getFileName(showName, episodeNumber);
-            const ws = XLSX.utils.aoa_to_sheet(processedData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Music Rights');
-            
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            zip.file(filename, wbout);
-        }
+        const sheetData = workbookData[sheetName];
+        const distIdInput = document.getElementById(`dist-id-${sheetName}`);
+        const distributionId = distIdInput ? distIdInput.value.trim() : '';
+        const processedData = processSheetData(sheetData, distributionId);
+        
+        const filename = getFileName(showName, sheetName);
+        const ws = XLSX.utils.aoa_to_sheet(processedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Music Rights');
+        
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        zip.file(filename, wbout);
     });
 
     zip.generateAsync({ type: "blob" }).then(function(content) {
@@ -79,61 +74,87 @@ exportAllBtn.addEventListener('click', () => {
 });
 
 function handleFile(file) {
+    console.log("handleFile started.");
     if (file) {
         fileName.textContent = file.name;
-        excelData.innerHTML = ''; // Clear previous data
-        songsSection.style.display = 'none'; // Hide section until submit
+        excelData.innerHTML = '';
+        songsSection.style.display = 'none';
         exportAllBtn.style.display = 'none';
-        distributionIdContainer.innerHTML = ''; // Clear old inputs
         
-        // Disable submit button and show loader
+        if (distributionIdContainer) {
+            distributionIdContainer.innerHTML = '';
+        }
+        
         submitBtn.disabled = true;
         loader.style.display = 'block';
+        console.log("Loader displayed, button disabled.");
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array', sheetStubs: true });
-            workbookData = {};
-            const episodeRegex = /Episode #(\d+)/;
+            console.log("File reading complete (onload).");
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', sheetStubs: true });
+                workbookData = {};
+                const episodeRegex = /Episode #(\d+)/;
 
-            workbook.SheetNames.forEach(sheetName => {
-                const match = sheetName.match(episodeRegex);
-                if (match) {
-                    const episodeNumber = match[1];
-                    const worksheet = workbook.Sheets[sheetName];
-                    workbookData[sheetName] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    createDistributionIdInput(episodeNumber);
-                }
-            });
+                workbook.SheetNames.forEach(sheetName => {
+                    const isEpisodeSheet = episodeRegex.test(sheetName);
+                    const isFilmSheet = sheetName.toUpperCase() === "FILM";
 
-            // Re-enable submit button and hide loader
+                    if (isEpisodeSheet || isFilmSheet) {
+                        console.log(`Found valid sheet: ${sheetName}`);
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        workbookData[sheetName] = jsonData;
+                        createDistributionIdInput(sheetName);
+                    }
+                });
+                console.log("Workbook processed. Found valid sheets:", Object.keys(workbookData));
+            } catch (error) {
+                console.error("Error processing workbook:", error);
+                alert("There was an error processing the Excel file.");
+            } finally {
+                submitBtn.disabled = false;
+                loader.style.display = 'none';
+                console.log("Loader hidden, button enabled.");
+            }
+        };
+        reader.onerror = () => {
+            console.error("FileReader error.");
+            alert("Failed to read the file.");
             submitBtn.disabled = false;
             loader.style.display = 'none';
         };
         reader.readAsArrayBuffer(file);
+        console.log("FileReader started.");
     } else {
+        // Reset UI if no file is selected
         fileName.textContent = 'or drag and drop it here';
         excelData.innerHTML = '';
         songsSection.style.display = 'none';
         exportAllBtn.style.display = 'none';
-        distributionIdContainer.innerHTML = '';
+        if (distributionIdContainer) {
+            distributionIdContainer.innerHTML = '';
+        }
         workbookData = {};
     }
 }
 
-function createDistributionIdInput(episodeNumber) {
+function createDistributionIdInput(sheetName) {
+    if (!distributionIdContainer) return;
+
     const inputGroup = document.createElement('div');
     inputGroup.className = 'dist-id-input-group';
 
     const label = document.createElement('label');
-    label.htmlFor = `dist-id-${episodeNumber}`;
-    label.textContent = `Distribution ID for Episode #${episodeNumber}:`;
+    label.htmlFor = `dist-id-${sheetName}`;
+    label.textContent = `Distribution ID for ${sheetName}:`;
     inputGroup.appendChild(label);
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.id = `dist-id-${episodeNumber}`;
+    input.id = `dist-id-${sheetName}`;
     input.className = 'distribution-id-input';
     inputGroup.appendChild(input);
 
@@ -142,45 +163,40 @@ function createDistributionIdInput(episodeNumber) {
 
 function displayAllEpisodeData() {
     excelData.innerHTML = ''; // Clear previous display
-    const episodeRegex = /Episode #(\d+)/;
 
     Object.keys(workbookData).forEach(sheetName => {
-        const match = sheetName.match(episodeRegex);
-        if (match) {
-            const episodeNumber = match[1];
-            const sheetData = workbookData[sheetName];
-            
-            const distIdInput = document.getElementById(`dist-id-${episodeNumber}`);
-            const distributionId = distIdInput ? distIdInput.value.trim() : '';
+        const sheetData = workbookData[sheetName];
+        
+        const distIdInput = document.getElementById(`dist-id-${sheetName}`);
+        const distributionId = distIdInput ? distIdInput.value.trim() : '';
 
-            const processedData = processSheetData(sheetData, distributionId);
+        const processedData = processSheetData(sheetData, distributionId);
 
-            const episodeContainer = document.createElement('div');
-            episodeContainer.className = 'episode-container';
+        const episodeContainer = document.createElement('div');
+        episodeContainer.className = 'episode-container';
 
-            const title = document.createElement('h2');
-            title.textContent = `Episode #${episodeNumber}`;
-            episodeContainer.appendChild(title);
+        const title = document.createElement('h2');
+        title.textContent = sheetName;
+        episodeContainer.appendChild(title);
 
-            const tableHTML = generateTableForSheet(processedData);
-            const tableContainer = document.createElement('div');
-            tableContainer.innerHTML = tableHTML;
-            episodeContainer.appendChild(tableContainer);
+        const tableHTML = generateTableForSheet(processedData);
+        const tableContainer = document.createElement('div');
+        tableContainer.innerHTML = tableHTML;
+        episodeContainer.appendChild(tableContainer);
 
-            const exportButton = document.createElement('button');
-            exportButton.className = 'export-btn';
-            exportButton.textContent = `Export Episode #${episodeNumber}`;
-            exportButton.onclick = () => {
-                exportSingleEpisode(processedData, episodeNumber);
-            };
-            episodeContainer.appendChild(exportButton);
+        const exportButton = document.createElement('button');
+        exportButton.className = 'export-btn';
+        exportButton.textContent = `Export ${sheetName}`;
+        exportButton.onclick = () => {
+            exportSingleEpisode(processedData, sheetName);
+        };
+        episodeContainer.appendChild(exportButton);
 
-            excelData.appendChild(episodeContainer);
-        }
+        excelData.appendChild(episodeContainer);
     });
 
     if (excelData.innerHTML === '') {
-        excelData.innerHTML = '<p>No sheets found with the format "Episode #NNN".</p>';
+        excelData.innerHTML = '<p>No valid sheets found. A sheet is valid if its name is "Episode #NNN" or "FILM".</p>';
     }
 }
 
@@ -250,22 +266,24 @@ function processSheetData(data, distributionId) {
     return processedData;
 }
 
-function getFileName(showName, episodeNumber) {
+function getFileName(showName, sheetName) {
     const date = new Date();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     const yy = String(date.getFullYear()).slice(-2);
     const formattedDate = `${mm}_${dd}_${yy}`;
-    return `Music_Rights_Upload_${showName}_${episodeNumber}_${formattedDate}.xlsx`;
+    // Sanitize sheetName for use in a filename
+    const sanitizedSheetName = sheetName.replace(/[^a-z0-9]/gi, '_');
+    return `Music_Rights_Upload_${showName}_${sanitizedSheetName}_${formattedDate}.xlsx`;
 }
 
-function exportSingleEpisode(data, episodeNumber) {
+function exportSingleEpisode(data, sheetName) {
     const showName = showNameInput.value.trim();
     if (!showName) {
         alert('Please enter a Title name.');
         return;
     }
-    const filename = getFileName(showName, episodeNumber);
+    const filename = getFileName(showName, sheetName);
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Music Rights');
